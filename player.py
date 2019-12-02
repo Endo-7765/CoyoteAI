@@ -53,7 +53,7 @@ class GameMaster():
         random.shuffle(self.all_cards)
         cards, summation = self.set_cards(self.all_cards[0:num_p+1])
         for i, p in enumerate(self.players):
-            for c in (cards[:i][::-1] + cards[i:][::-1]):
+            for c in (cards[:i][::-1] + cards[i+1:][::-1]):
                 p.get_cards(c)
         
         game_flag = True

@@ -98,7 +98,7 @@ class GameMaster():
         double = (1 in flags)
         summation = 2*summation if double else summation
 
-        return cards[:-1], sum
+        return cards[:-1], summation
     
     def train(self, results, history):
         for p in self.players:

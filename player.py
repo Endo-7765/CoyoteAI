@@ -27,6 +27,21 @@ class Player():
         # implement learn
         # parmas = params
         pass
+class Human(Player):
+  def __call__(self,number):
+    # show visible cards to the player
+    print(self.cards)
+    num = ""
+    while True:
+      num = input()
+      try:
+        num = int(num)
+        break
+      except ValueError:
+        print('wrong input')
+    if num<=-1:
+      num = -100
+    return num
 
 class GameMaster():
     def __init__(self):

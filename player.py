@@ -49,7 +49,7 @@ class GameMaster():
                 num = p(num)
                 if num == -100:
                     game_flag = False
-                    if history[-1] > summation:
+                    if (len(history) == 0 and summation<0) or  (len(history)!=0 and history[-1] > summation):
                         # success!
                         # results = 
                         pass

@@ -23,7 +23,7 @@ class Player():
         else:
             return num
 
-    def learn(self, result):
+    def learn(self, result,history):
         # implement learn
         # parmas = params
         pass

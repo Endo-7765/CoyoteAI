@@ -14,3 +14,8 @@ class Card:
             return "?"
     def __repr__(self):
         return self.__str__()
+    def __eq__(self,other):
+        if not isinstance(other,Card):
+            return NotImplemented
+        else:
+            return other.num == self.num  and other.flag == self.flag

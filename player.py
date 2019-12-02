@@ -62,9 +62,13 @@ class GameMaster():
         while game_flag:
             num = 0
             for i, p in enumerate(self.players):
-                num = p(num)
+                num = p(history)
                 if num == -100:
+                    print("player"+str(i)+"replyed coyote")
                     game_flag = False
+                    print("true cards")
+                    print(cards)
+
                     if (len(history) == 0 and summation<0) or  (len(history)!=0 and history[-1] > summation):
                         # success!
                         # results = 
@@ -74,8 +78,11 @@ class GameMaster():
                         # failure!
                         # results =
                     break
-                else:
+                elif (len(history)>0 and num > history[-1]) or (len(history)==0 and num >=0):
                     history.append(num)
+                    print("player"+str(i)+"replyed"+str(num))
+                else:
+                    print('illegal number')
         
         self.train(results, history)
         
@@ -87,7 +94,7 @@ class GameMaster():
         if question:
             i = flags.index(3)
             nums = nums[:i] + nums[i+1:]
-            flags = flags[:i] + flags[i+1]
+            flags = flags[:i] + flags[i+1:]
         else:
             nums = nums[:-1]
             flags = flags[:-1]

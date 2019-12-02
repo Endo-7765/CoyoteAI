@@ -50,7 +50,8 @@ class GameMaster():
 
     def play(self):
         num_p = len(self.players)
-        cards, summation = self.set_cards(random.shuffle(self.all_cards)[0:num_p+1])
+        random.shuffle(self.all_cards)
+        cards, summation = self.set_cards(self.all_cards[0:num_p+1])
         for i, p in enumerate(self.players):
             for c in (cards[:i][::-1] + cards[i:][::-1]):
                 p.get_cards(c)

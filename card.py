@@ -12,3 +12,5 @@ class Card:
             return "max0"
         else:
             return "?"
+    def __repr__(self):
+        return self.__str__()

@@ -6,7 +6,8 @@ class Player():
         self.history = []
         self.players = []
         self.cards = []
-    
+    def reset(self):
+        self.cards=[]
     def get_cards(self, card):
         self.cards.append(card)
 
@@ -53,6 +54,7 @@ class GameMaster():
         random.shuffle(self.all_cards)
         cards, summation = self.set_cards(self.all_cards[0:num_p+1])
         for i, p in enumerate(self.players):
+            p.reset()
             for c in (cards[:i][::-1] + cards[i+1:][::-1]):
                 p.get_cards(c)
         
@@ -68,6 +70,7 @@ class GameMaster():
                     game_flag = False
                     print("true cards")
                     print(cards)
+                    print(summation)
 
                     if (len(history) == 0 and summation<0) or  (len(history)!=0 and history[-1] > summation):
                         # success!

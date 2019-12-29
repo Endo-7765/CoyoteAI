@@ -18,8 +18,7 @@ class Gaussian(Player):
     threshold = []
     for i in cards:
       threshold.append(calcsum(self.cards + [i]))
-    threshold.sort(reverse=True)
-    print(threshold)
+    threshold.sort()
     if len(history)==0:#自分が初めての手番の場合
       if threshold[int(self.coyote_rate * len(threshold))] < 0:#coyote_rate以上の確率で、真値が0以下と確信
         return -100

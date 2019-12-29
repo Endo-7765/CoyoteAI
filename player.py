@@ -48,6 +48,7 @@ class GameMaster():
     def __init__(self):
         self.players = []
         self.all_cards = []
+        self.player_index = 0
 
     def play(self):
         num_p = len(self.players)
@@ -62,30 +63,30 @@ class GameMaster():
         history = []
         results = []
         while game_flag:
-            num = 0
-            for i, p in enumerate(self.players):
-                num = p(history)
-                if num == -100:
-                    print("player"+str(i)+"replyed coyote")
-                    game_flag = False
-                    print("true cards")
-                    print(cards)
-                    print(summation)
+            p = self.players[self.player_index]
+            num = p(history)
+            if num == -100:
+                print("player"+str(self.player_index)+"replyed coyote")
+                game_flag = False
+                print("true cards")
+                print(cards)
+                print(summation)
 
-                    if (len(history) == 0 and summation<0) or  (len(history)!=0 and history[-1] > summation):
-                        # success!
-                        # results = 
-                        pass
-                    else:
-                        pass
-                        # failure!
-                        # results =
-                    break
-                elif (len(history)>0 and num > history[-1]) or (len(history)==0 and num >=0):
-                    history.append(num)
-                    print("player"+str(i)+"replyed"+str(num))
+                if (len(history) == 0 and summation<0) or  (len(history)!=0 and history[-1] > summation):
+                    # success!
+                    # results = 
+                    pass
                 else:
-                    print('illegal number')
+                    pass
+                    # failure!
+                    # results =
+                break
+            elif (len(history)>0 and num > history[-1]) or (len(history)==0 and num >=0):
+                history.append(num)
+                print("player"+str(self.player_index)+"replyed"+str(num))
+            else:
+                print('illegal number')
+            self.player_index = (self.player_index+1)%len(self.players)
         
         self.train(results, history)
         

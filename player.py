@@ -1,5 +1,5 @@
 import random
-
+import numpy as np
 class Player():
     def __init__(self):
         self.params = {}
@@ -29,8 +29,10 @@ class Player():
         # parmas = params
         pass
 class Human(Player):
-  def __call__(self,number):
+  def __call__(self,history):
     # show visible cards to the player
+    print('history')
+    print(history)
     print(self.cards)
     num = ""
     while True:
@@ -51,6 +53,7 @@ class GameMaster():
         self.player_index = 0
 
     def play(self):
+        loser = 0
         num_p = len(self.players)
         random.shuffle(self.all_cards)
         cards, summation = self.set_cards(self.all_cards[0:num_p+1])
@@ -66,29 +69,36 @@ class GameMaster():
             p = self.players[self.player_index]
             num = p(history)
             if num == -100:
-                print("player"+str(self.player_index)+"replyed coyote")
+                #print("player"+str(self.player_index)+"replyed coyote")
                 game_flag = False
-                print("true cards")
-                print(cards)
-                print(summation)
+                #print("true cards")
+                #print(cards)
+                #print(summation)
 
                 if (len(history) == 0 and summation<0) or  (len(history)!=0 and history[-1] > summation):
                     # success!
-                    # results = 
-                    pass
+                    results = np.ones(len(self.players),dtype=np.float32) * 0.25
+                    results[(self.player_index-1)%len(self.players)] = -1
+                    loser = (self.player_index-1)%len(self.players)
                 else:
-                    pass
                     # failure!
-                    # results =
+                    results = np.ones(len(self.players),dtype=np.float32)*0.25
+                    results[self.player_index]=-1
+                    loser = self.player_index
                 break
             elif (len(history)>0 and num > history[-1]) or (len(history)==0 and num >=0):
                 history.append(num)
-                print("player"+str(self.player_index)+"replyed"+str(num))
+                #print("player"+str(self.player_index)+"replyed"+str(num))
             else:
-                print('illegal number')
+                print('illegal number from'+str(self.player_index))
+                print('history')
+                print(history)
+                print('reply')
+                print(num)
             self.player_index = (self.player_index+1)%len(self.players)
         
         self.train(results, history)
+        return loser
         
     def set_cards(self, cards):
         flags = [c.flag for c in cards]
@@ -112,5 +122,5 @@ class GameMaster():
         return cards[:-1], summation
     
     def train(self, results, history):
-        for p in self.players:
-            p.learn(results, history)
+        for i in range(len(self.players)):
+          self.players[i].learn(results[i],history)

@@ -1,6 +1,7 @@
 from card import *
 from gaussian import *
 from player import *
+from DQN import *
 def defaultCoyoteCards():
   cards = []
   cards.append(Card(20,0))
@@ -28,13 +29,19 @@ def main():
   master = GameMaster()
   master.all_cards = coyote_cards
   players = []
-  players.append(Human())
-  players.append(Gaussian(0.4))
-  players.append(Gaussian(0.5))
-  players.append(Gaussian(0.6))
-  players.append(Gaussian(0.7))
+  players.append(DQNPlayer())
+  players.append(Gaussian(0.3,0.6))#most aggressive
+  players.append(Gaussian(0.3,0.7))
+  players.append(Gaussian(0.2,0.8))
+  players.append(Gaussian(0.2,0.9))#most defensive
   
   master.players = players
-  master.play()
+  lose_count = np.zeros(5,dtype=np.int32)
+  for i in range(1000000):
+    loser = master.play()
+    lose_count[loser]+=1
+    if i%1000 == 0:
+      print(lose_count)
+      lose_count[:] = 0
 if __name__=='__main__':
   main()

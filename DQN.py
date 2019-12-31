@@ -26,7 +26,7 @@ class Net(nn.Module):
 MEMORY_SIZE = 500
 BATCH_SIZE = 50
 EPSILON = 1.0
-EPSILON_DECREASE = 0.0001 # εの減少値
+EPSILON_DECREASE = 0.00001 # εの減少値
 EPSILON_MIN = 0.1 # εの下限
 START_REDUCE_EPSILON = 200 # εを減少させるステップ数
 TRAIN_FREQ = 10 # Q関数の学習間隔
@@ -37,7 +37,7 @@ class DQNPlayer(Player):
     super(DQNPlayer,self).__init__()
     self.Q = Net()
     self.Q_ast = copy.deepcopy(self.Q)
-    self.optimizer = optim.SGD(self.Q.parameters(),lr = 1e-3,momentum=0.9)
+    self.optimizer = optim.SGD(self.Q.parameters(),lr = 1e-1,momentum=0.3)
     self.memory=[]#リプレイ用の配列(state,action,reward,next_state,done)
     self.EPSILON = EPSILON
     self.temp_memory = []#直前の行動(state,action)を覚える。次に__call__が呼び出されたときに、memoryに追加する
@@ -46,7 +46,7 @@ class DQNPlayer(Player):
     self.count = 0#何回__call__が呼び出されたか
   def __call__(self,history):
     #Add something to memory
-    input_to_net = self.createInputToNet().reshape(1,42)
+    input_to_net = self.createInputToNet(history).reshape(1,42)
     if len(self.temp_memory)!=0:
       self.memory.append((self.temp_memory[0],self.temp_memory[1],self.sum_reward,input_to_net,self.done))
       if len(self.memory)>MEMORY_SIZE:
@@ -57,7 +57,6 @@ class DQNPlayer(Player):
     #EPSILONを変える
     if self.count > START_REDUCE_EPSILON:
       self.EPSILON = max(self.EPSILON - EPSILON_DECREASE,EPSILON_MIN)
-        
     retval = 0#save the retval in this function
     if np.random.rand()>self.EPSILON:
       #最適な行動を行う
@@ -97,7 +96,7 @@ class DQNPlayer(Player):
       
 
       
-  def createInputToNet(self):
+  def createInputToNet(self,history):
     NORMALIZE_MULTIPLIER = 0.05
     retval_cards = []
     for i in self.cards:
@@ -109,7 +108,9 @@ class DQNPlayer(Player):
         retval_cards.append(temp)
     retval_cards = np.concatenate(retval_cards)
     retval_history=np.zeros(8,dtype=np.float32)
-    for i,history_element in enumerate(self.history):
+    for i,history_element in enumerate(reversed(history)):
+      if i>=4:
+        break
       retval_history[i]=history_element*NORMALIZE_MULTIPLIER
       retval_history[i+4]=1.0
     retval_mycard = np.ones(14,dtype=np.float32)/14.0

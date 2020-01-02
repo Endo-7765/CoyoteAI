@@ -30,19 +30,23 @@ class EstimationModelByContinuous(nn.Module):
 
     def __init__(self):
         super(EstimationModelByContinuous, self).__init__()
-        # input: 4(B)*4(players) + 4(players) + 4(True or False) = 24
+        # input: 5(B)*4(players) + 4(players) + 4(True or False) = 28
         self.net = nn.Sequential(
-            nn.Linear(24, 40),
+            nn.Linear(28, 200),
             nn.ReLU(),
-            nn.Linear(40, 40),
+            nn.Linear(200, 200),
             nn.ReLU(),
-            nn.Linear(40, 14)
+            nn.Linear(200,200),
+            nn.ReLU(),
+            nn.Linear(200,200),
+            nn.ReLU(),
+            nn.Linear(200, 14)
         )
         self.softmax = nn.Softmax()
     
     def forward(self, x):
-        x = self.net(x)
-        return x
+        y = self.net(x)
+        return y
     
     def estimate(self, x):
         x = self.net(x)

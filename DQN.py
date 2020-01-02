@@ -8,19 +8,33 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 import numpy as np
+from estimation_model import EstimationModelByContinuous
 class Net(nn.Module):
   def __init__(self):
     super(Net,self).__init__()
     self.fc1 = nn.Linear(42,200)
+    nn.init.kaiming_normal_(self.fc1.weight)
     self.fc2 = nn.Linear(200,200)
+    nn.init.kaiming_normal_(self.fc2.weight)
     self.fc3 = nn.Linear(200,200)
+    nn.init.kaiming_normal_(self.fc3.weight)
     self.fc4 = nn.Linear(200,200)
-    self.fc5 = nn.Linear(200,62)
+    nn.init.kaiming_normal_(self.fc4.weight)
+    self.fc5 = nn.Linear(200,200)
+    nn.init.kaiming_normal_(self.fc5.weight)
+    self.fc6 = nn.Linear(200,200)
+    nn.init.kaiming_normal_(self.fc6.weight)
+    self.fc7 = nn.Linear(200,62)
+    nn.init.kaiming_normal_(self.fc7.weight)
+
   def forward(self,x):
     h = F.relu(self.fc1(x))
     h = F.relu(self.fc2(h))
     h = F.relu(self.fc3(h))
     h = F.relu(self.fc4(h))
+    h = F.relu(self.fc5(h))
+    h = F.relu(self.fc6(h))
+
     h = self.fc5(h)
     return h
 MEMORY_SIZE = 500
@@ -32,33 +46,54 @@ START_REDUCE_EPSILON = 200 # εを減少させるステップ数
 TRAIN_FREQ = 10 # Q関数の学習間隔
 GAMMA = 0.4
 UPDATE_TARGET_Q_FREQ = 20
+START_Q_LEARNING = 30000
 class DQNPlayer(Player):
   def __init__(self):
     super(DQNPlayer,self).__init__()
-    self.Q = Net()
-    self.Q_ast = copy.deepcopy(self.Q)
+    self.Q = Net()#Q_value estimate network
+    self.Q_ast = copy.deepcopy(self.Q)#target network
+    self.card_estimator  = EstimationModelByContinuous()
     self.optimizer = optim.SGD(self.Q.parameters(),lr = 1e-1,momentum=0.3)
+    self.card_estimator_optimizer = optim.SGD(self.card_estimator.parameters(),lr=1e-1,momentum=0.3)
     self.memory=[]#リプレイ用の配列(state,action,reward,next_state,done)
+    self.card_estimator_memory = []#カード推定器の学習用のリプレイ配列(history,answer)
     self.EPSILON = EPSILON
     self.temp_memory = []#直前の行動(state,action)を覚える。次に__call__が呼び出されたときに、memoryに追加する
+    self.card_estimator_temp_memory = []#前回の答え合わせ以降の状態を全て保存
     self.sum_reward = 0.0#前回の__call__以降に受け取った報酬の和
     self.done=False
+    self.my_card = None
     self.count = 0#何回__call__が呼び出されたか
+    self.card_estimator_temp_count = 0
+    self.evaluation_mode = False#評価用モードでは、常に最適な手を取り続ける
   def __call__(self,history):
     #Add something to memory
-    input_to_net = self.createInputToNet(history).reshape(1,42)
+    state_vector = self.createInputToNet(history).reshape(1,28)#numpy (1,28)
+    #まず自分のカードの推定器を用いる。
+    my_card_probability = self.card_estimator(torch.from_numpy(state_vector))#tensor dim(1,14)
+    input_to_net = np.concatenate([F.softmax(my_card_probability,dim=1).detach().numpy(),state_vector],axis=1)#numpy dim(1,42)
+    if len(self.card_estimator_temp_memory) != 0 and self.done:#前回の試行から、一回のプレイが終わり、正解が明らかになった。;
+      for j in self.card_estimator_temp_memory:
+        self.card_estimator_memory.append((j,self.my_card.to_onehot()))
+        if len(self.card_estimator_memory) > MEMORY_SIZE:
+          self.card_estimator_memory.pop(0)
+      self.card_estimator_temp_memory = []
+      self.my_card = None
+    if len(self.card_estimator_memory)>=MEMORY_SIZE and (self.count+int(TRAIN_FREQ/2))%TRAIN_FREQ == 0:
+      self.card_estimator_train()
+      
+
     if len(self.temp_memory)!=0:
       self.memory.append((self.temp_memory[0],self.temp_memory[1],self.sum_reward,input_to_net,self.done))
       if len(self.memory)>MEMORY_SIZE:
         self.memory.pop(0)#過去の記録を削除
-        if self.count % TRAIN_FREQ == 0:
+        if self.count % TRAIN_FREQ == 0 and self.count > START_Q_LEARNING:
           self.train()
-    self.count += 1
     #EPSILONを変える
     if self.count > START_REDUCE_EPSILON:
       self.EPSILON = max(self.EPSILON - EPSILON_DECREASE,EPSILON_MIN)
     retval = 0#save the retval in this function
-    if np.random.rand()>self.EPSILON:
+    if self.evaluation_mode or np.random.rand()>self.EPSILON:
       #最適な行動を行う
       with torch.no_grad():
         Q_value_action = self.Q(torch.from_numpy(input_to_net)).numpy().ravel()#shape:(62)
@@ -91,6 +126,8 @@ class DQNPlayer(Player):
       self.temp_memory = (input_to_net,retval)
     self.sum_reward = 0.0
     self.done=False
+    self.card_estimator_temp_memory.append(state_vector)
+    self.count += 1
     return retval
           
       
@@ -113,12 +150,15 @@ class DQNPlayer(Player):
         break
       retval_history[i]=history_element*NORMALIZE_MULTIPLIER
       retval_history[i+4]=1.0
-    retval_mycard = np.ones(14,dtype=np.float32)/14.0
-    return np.concatenate([retval_mycard,retval_cards,retval_history])
-  def learn(self,result,history):
+    return np.concatenate([retval_cards,retval_history])
+  def learn(self,result,my_card,history):
     self.sum_reward += result
+    if self.my_card == None:
+      self.my_card = my_card
     self.done=True
   def train(self):
+    if self.evaluation_mode:
+      return
     memory_ = np.random.permutation(self.memory)
     memory_idx = range(len(memory_))
     for i in memory_idx[::BATCH_SIZE]:
@@ -142,6 +182,22 @@ class DQNPlayer(Player):
       self.optimizer.step()
     if self.count % UPDATE_TARGET_Q_FREQ==0:
       self.Q_ast = copy.deepcopy(self.Q)
+  def card_estimator_train(self):
+    if self.evaluation_mode:
+      return
+    memory_ = np.random.permutation(self.card_estimator_memory)
+    memory_idx = range(len(memory_))
+    self.card_estimator_temp_count += 1
+    for i in memory_idx[::BATCH_SIZE]:
+      batch = np.array(memory_[i:i+BATCH_SIZE])
+      states = np.array(batch[:,0].tolist(),dtype='float32').reshape(BATCH_SIZE,28)
+      answer = np.array(batch[:,1].tolist(),dtype='int64')
+
+      self.card_estimator_optimizer.zero_grad()
+      estimation = self.card_estimator(torch.from_numpy(states))
+      loss = nn.CrossEntropyLoss()(estimation,torch.from_numpy(answer))
+      loss.backward()
+      self.card_estimator_optimizer.step()
 
 
 

@@ -29,7 +29,8 @@ def main():
   master = GameMaster()
   master.all_cards = coyote_cards
   players = []
-  players.append(DQNPlayer())
+  train_player = DQNPlayer()
+  players.append(train_player)
   players.append(Gaussian(0.3,0.6))#most aggressive
   players.append(Gaussian(0.3,0.7))
   players.append(Gaussian(0.2,0.8))
@@ -43,5 +44,12 @@ def main():
     if i%1000 == 0:
       print(lose_count)
       lose_count[:] = 0
+  print('Evaluation')
+  train_player.evaluation_mode = True
+  lose_count[:]=0
+  for i in range(1000):
+    loser = master.play()
+    lose_count[loser]+=1
+  print(lose_count)
 if __name__=='__main__':
   main()

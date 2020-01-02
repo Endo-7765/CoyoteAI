@@ -24,7 +24,7 @@ class Player():
         else:
             return num
 
-    def learn(self, result,history):
+    def learn(self, result,my_card,history):
         # implement learn
         # parmas = params
         pass
@@ -97,7 +97,7 @@ class GameMaster():
                 print(num)
             self.player_index = (self.player_index+1)%len(self.players)
         
-        self.train(results, history)
+        self.train(results, cards, history)
         return loser
         
     def set_cards(self, cards):
@@ -121,6 +121,6 @@ class GameMaster():
 
         return cards[:-1], summation
     
-    def train(self, results, history):
+    def train(self, results, cards, history):
         for i in range(len(self.players)):
-          self.players[i].learn(results[i],history)
+          self.players[i].learn(results[i],cards[i],history)

@@ -2,6 +2,7 @@ from card import *
 from gaussian import *
 from player import *
 from DQN import *
+from estimator_baysian import *
 def defaultCoyoteCards():
   cards = []
   cards.append(Card(20,0))
@@ -29,10 +30,12 @@ def main():
   master = GameMaster()
   master.all_cards = coyote_cards
   players = []
-  train_player = DQNPlayer()
-  players.append(train_player)
+  dqn = DQNPlayer()
+  dqn2 = DQNPlayer()
+  #players.append(BaysianEstimatorPlayer(0.2,0.8))
   players.append(Gaussian(0.3,0.6))#most aggressive
-  players.append(Gaussian(0.3,0.7))
+  players.append(dqn)
+  players.append(dqn2)
   players.append(Gaussian(0.2,0.8))
   players.append(Gaussian(0.2,0.9))#most defensive
   
@@ -44,10 +47,21 @@ def main():
     if i%1000 == 0:
       print(lose_count)
       lose_count[:] = 0
-  print('Evaluation')
-  train_player.evaluation_mode = True
   lose_count[:]=0
-  for i in range(1000):
+  dqn2.evaluation_mode = True
+  dqn1.EPSILON = 1.0
+  for i in range(1000000):
+    loser = master.play()
+    lose_count[loser]+=1
+    if i%1000 == 0:
+      print(lose_count)
+      lose_count[:] = 0
+
+  print('Evaluation')
+  lose_count[:]=0
+  dqn.evaluation_mode=True
+  dqn2.evaluation_mode = True
+  for i in range(10000):
     loser = master.play()
     lose_count[loser]+=1
   print(lose_count)

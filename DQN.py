@@ -34,22 +34,24 @@ class Net(nn.Module):
     h = F.relu(self.fc4(h))
     h = F.relu(self.fc5(h))
     h = F.relu(self.fc6(h))
-
-    h = self.fc5(h)
+    h = self.fc7(h)
     return h
-MEMORY_SIZE = 500
-BATCH_SIZE = 50
-EPSILON = 1.0
-EPSILON_DECREASE = 0.00001 # εの減少値
-EPSILON_MIN = 0.1 # εの下限
-START_REDUCE_EPSILON = 200 # εを減少させるステップ数
-TRAIN_FREQ = 10 # Q関数の学習間隔
-GAMMA = 0.4
-UPDATE_TARGET_Q_FREQ = 20
-START_Q_LEARNING = 30000
-class DQNPlayer(Player):
+class DQNPlayerConfiguration:#DQNPlayerの学習のパラメータを管理
   def __init__(self):
+    self.MEMORY_SIZE = 500
+    self.BATCH_SIZE = 50
+    self.EPSILON = 1.0
+    self.EPSILON_DECREASE = 1e-6*1.2 # εの減少値
+    self.EPSILON_MIN = 0.1 # εの下限
+    self.START_REDUCE_EPSILON = 200 # εを減少させるステップ数
+    self.TRAIN_FREQ = 10 # Q関数の学習間隔
+    self.GAMMA = 0.4
+    self.UPDATE_TARGET_Q_FREQ = 20
+    self.START_Q_LEARNING = 30000
+class DQNPlayer(Player):
+  def __init__(self,configuration = DQNPlayerConfiguration()):
     super(DQNPlayer,self).__init__()
+    self.configuration = configuration
     self.Q = Net()#Q_value estimate network
     self.Q_ast = copy.deepcopy(self.Q)#target network
     self.card_estimator  = EstimationModelByContinuous()
@@ -57,7 +59,7 @@ class DQNPlayer(Player):
     self.card_estimator_optimizer = optim.SGD(self.card_estimator.parameters(),lr=1e-1,momentum=0.3)
     self.memory=[]#リプレイ用の配列(state,action,reward,next_state,done)
     self.card_estimator_memory = []#カード推定器の学習用のリプレイ配列(history,answer)
-    self.EPSILON = EPSILON
+    self.EPSILON = self.configuration.EPSILON
     self.temp_memory = []#直前の行動(state,action)を覚える。次に__call__が呼び出されたときに、memoryに追加する
     self.card_estimator_temp_memory = []#前回の答え合わせ以降の状態を全て保存
     self.sum_reward = 0.0#前回の__call__以降に受け取った報酬の和
@@ -75,23 +77,23 @@ class DQNPlayer(Player):
     if len(self.card_estimator_temp_memory) != 0 and self.done:#前回の試行から、一回のプレイが終わり、正解が明らかになった。;
       for j in self.card_estimator_temp_memory:
         self.card_estimator_memory.append((j,self.my_card.to_onehot()))
-        if len(self.card_estimator_memory) > MEMORY_SIZE:
+        if len(self.card_estimator_memory) > self.configuration.MEMORY_SIZE:
           self.card_estimator_memory.pop(0)
       self.card_estimator_temp_memory = []
       self.my_card = None
-    if len(self.card_estimator_memory)>=MEMORY_SIZE and (self.count+int(TRAIN_FREQ/2))%TRAIN_FREQ == 0:
+    if len(self.card_estimator_memory)>=self.configuration.MEMORY_SIZE and (self.count+int(self.configuration.TRAIN_FREQ/2))%self.configuration.TRAIN_FREQ == 0:
       self.card_estimator_train()
       
 
     if len(self.temp_memory)!=0:
       self.memory.append((self.temp_memory[0],self.temp_memory[1],self.sum_reward,input_to_net,self.done))
-      if len(self.memory)>MEMORY_SIZE:
+      if len(self.memory)>self.configuration.MEMORY_SIZE:
         self.memory.pop(0)#過去の記録を削除
-        if self.count % TRAIN_FREQ == 0 and self.count > START_Q_LEARNING:
+        if self.count % self.configuration.TRAIN_FREQ == 0 and self.count > self.configuration.START_Q_LEARNING:
           self.train()
     #EPSILONを変える
-    if self.count > START_REDUCE_EPSILON:
-      self.EPSILON = max(self.EPSILON - EPSILON_DECREASE,EPSILON_MIN)
+    if self.count > self.configuration.START_REDUCE_EPSILON:
+      self.EPSILON = max(self.EPSILON - self.configuration.EPSILON_DECREASE,self.configuration.EPSILON_MIN)
     retval = 0#save the retval in this function
     if self.evaluation_mode or np.random.rand()>self.EPSILON:
       #最適な行動を行う
@@ -161,26 +163,26 @@ class DQNPlayer(Player):
       return
     memory_ = np.random.permutation(self.memory)
     memory_idx = range(len(memory_))
-    for i in memory_idx[::BATCH_SIZE]:
-      batch = np.array(memory_[i:i+BATCH_SIZE]) # 経験ミニバッチ
-      states = np.array(batch[:,0].tolist(), dtype="float32").reshape((BATCH_SIZE,42))
+    for i in memory_idx[::self.configuration.BATCH_SIZE]:
+      batch = np.array(memory_[i:i+self.configuration.BATCH_SIZE]) # 経験ミニバッチ
+      states = np.array(batch[:,0].tolist(), dtype="float32").reshape((self.configuration.BATCH_SIZE,42))
       acts = np.array(batch[:,1].tolist(), dtype="int32")
       rewards = np.array(batch[:,2].tolist(), dtype="float32")
-      next_states = np.array(batch[:,3].tolist(), dtype="float32").reshape((BATCH_SIZE, 42))
+      next_states = np.array(batch[:,3].tolist(), dtype="float32").reshape((self.configuration.BATCH_SIZE, 42))
       dones = np.array(batch[:,4].tolist(), dtype="bool")
       
       q = self.Q(torch.from_numpy(states))
       with torch.no_grad():
         maxs = np.max(self.Q_ast(torch.from_numpy(next_states)).numpy(),axis=1)
       target = copy.deepcopy(q.data.numpy())
-      for j in range(BATCH_SIZE):
-        target[j,acts[j]]=rewards[j]+GAMMA * maxs[j]*(not dones[j])
+      for j in range(self.configuration.BATCH_SIZE):
+        target[j,acts[j]]=rewards[j]+self.configuration.GAMMA * maxs[j]*(not dones[j])
       self.optimizer.zero_grad()
       loss = nn.SmoothL1Loss()(q,torch.from_numpy(target))
 
       loss.backward()
       self.optimizer.step()
-    if self.count % UPDATE_TARGET_Q_FREQ==0:
+    if self.count % self.configuration.UPDATE_TARGET_Q_FREQ==0:
       self.Q_ast = copy.deepcopy(self.Q)
   def card_estimator_train(self):
     if self.evaluation_mode:
@@ -188,9 +190,9 @@ class DQNPlayer(Player):
     memory_ = np.random.permutation(self.card_estimator_memory)
     memory_idx = range(len(memory_))
     self.card_estimator_temp_count += 1
-    for i in memory_idx[::BATCH_SIZE]:
-      batch = np.array(memory_[i:i+BATCH_SIZE])
-      states = np.array(batch[:,0].tolist(),dtype='float32').reshape(BATCH_SIZE,28)
+    for i in memory_idx[::self.configuration.BATCH_SIZE]:
+      batch = np.array(memory_[i:i+self.configuration.BATCH_SIZE])
+      states = np.array(batch[:,0].tolist(),dtype='float32').reshape(self.configuration.BATCH_SIZE,28)
       answer = np.array(batch[:,1].tolist(),dtype='int64')
 
       self.card_estimator_optimizer.zero_grad()

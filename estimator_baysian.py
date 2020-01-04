@@ -31,9 +31,13 @@ class BaysianEstimatorPlayerConfiguration:
       Card(0,2),
       Card(0,3)]
 class BaysianEstimatorPlayer(Player):
-  def __init__(self,defensive_rate,coyote_rate,configuration = BaysianEstimatorPlayerConfiguration()):
+  def __init__(self,defensive_rate,coyote_rate,configuration = BaysianEstimatorPlayerConfiguration(),loss_output = None):
     self.defensive_rate = defensive_rate
     self.coyote_rate = coyote_rate
+    if loss_output is not None:
+      self.loss_output = open(loss_output,mode='w')
+    else:
+      self.loss_output = None
     self.configuration = configuration
     self.card_estimator = EstimationModelByContinuous()
     self.card_estimator_optimizer = optim.SGD(self.card_estimator.parameters(),lr=1e-1,momentum = 0.3)
@@ -104,10 +108,9 @@ class BaysianEstimatorPlayer(Player):
     return np.concatenate([retval_cards,retval_history])
 
   def card_estimator_train(self):
-    if self.evaluation_mode:
-      return
     memory_ = np.random.permutation(self.card_estimator_memory)
     memory_idx = range(len(memory_))
+    average_loss = 0.0
     for i in memory_idx[::self.configuration.BATCH_SIZE]:
       batch = np.array(memory_[i:i+self.configuration.BATCH_SIZE])
       states = np.array(batch[:,0].tolist(),dtype='float32').reshape(self.configuration.BATCH_SIZE,28)
@@ -116,12 +119,20 @@ class BaysianEstimatorPlayer(Player):
       self.card_estimator_optimizer.zero_grad()
       estimation = self.card_estimator(torch.from_numpy(states))
       loss = nn.CrossEntropyLoss()(estimation,torch.from_numpy(answer))
-      loss.backward()
-      self.card_estimator_optimizer.step()
+      average_loss += loss.detach().numpy()
+      if not self.evaluation_mode:
+        loss.backward()
+        self.card_estimator_optimizer.step()
+    average_loss /= (len(memory_)/self.configuration.BATCH_SIZE)
+    if self.loss_output is not None:
+      self.loss_output.write(str(self.count)+','+str(average_loss)+'\n')
   def learn(self,result,my_card,history):
     if self.my_card == None:
       self.my_card = my_card
     self.done=True
+  def __del__(self):
+    if self.loss_output is not None:
+      self.loss_output.close()
 
 
 

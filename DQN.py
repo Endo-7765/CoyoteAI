@@ -41,7 +41,7 @@ class DQNPlayerConfiguration:#DQNPlayerの学習のパラメータを管理
     self.MEMORY_SIZE = 500
     self.BATCH_SIZE = 50
     self.EPSILON = 1.0
-    self.EPSILON_DECREASE = 1e-6*1.2 # εの減少値
+    self.EPSILON_DECREASE = 1e-5 # εの減少値
     self.EPSILON_MIN = 0.1 # εの下限
     self.START_REDUCE_EPSILON = 200 # εを減少させるステップ数
     self.TRAIN_FREQ = 10 # Q関数の学習間隔
@@ -49,9 +49,13 @@ class DQNPlayerConfiguration:#DQNPlayerの学習のパラメータを管理
     self.UPDATE_TARGET_Q_FREQ = 20
     self.START_Q_LEARNING = 30000
 class DQNPlayer(Player):
-  def __init__(self,configuration = DQNPlayerConfiguration()):
+  def __init__(self,configuration = DQNPlayerConfiguration(),loss_output = None):
     super(DQNPlayer,self).__init__()
     self.configuration = configuration
+    if loss_output is not None:
+      self.loss_output = open(loss_output,mode='w')
+    else:
+      self.loss_output = None
     self.Q = Net()#Q_value estimate network
     self.Q_ast = copy.deepcopy(self.Q)#target network
     self.card_estimator  = EstimationModelByContinuous()
@@ -185,8 +189,7 @@ class DQNPlayer(Player):
     if self.count % self.configuration.UPDATE_TARGET_Q_FREQ==0:
       self.Q_ast = copy.deepcopy(self.Q)
   def card_estimator_train(self):
-    if self.evaluation_mode:
-      return
+    average_loss = 0.0
     memory_ = np.random.permutation(self.card_estimator_memory)
     memory_idx = range(len(memory_))
     self.card_estimator_temp_count += 1
@@ -198,10 +201,15 @@ class DQNPlayer(Player):
       self.card_estimator_optimizer.zero_grad()
       estimation = self.card_estimator(torch.from_numpy(states))
       loss = nn.CrossEntropyLoss()(estimation,torch.from_numpy(answer))
-      loss.backward()
-      self.card_estimator_optimizer.step()
-
-
-
-
-      
+      average_loss += loss.detach().numpy()
+      if not self.evaluation_mode:
+        loss.backward()
+        self.card_estimator_optimizer.step()
+    average_loss /= (len(memory_)/self.configuration.BATCH_SIZE)
+    if self.loss_output is not None:
+      self.loss_output.write(str(self.count)+","+str(average_loss)+'\n')
+   
+  def __del__(self):
+    if self.loss_output is None:
+      self.loss_output.close()
+    

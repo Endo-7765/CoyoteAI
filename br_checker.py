@@ -28,35 +28,46 @@ def defaultCoyoteCards():
   cards.append(Card(0,2))
   cards.append(Card(0,3))
   return cards
-def generate_player(player_array):
-  retval = []
-  for i in player_array:
-    if i==0:
-      retval.append(DQNPlayer())
-    elif i==1:
-      retval.append(BaysianEstimatorPlayer(0.2,0.8))
-    elif i==2:
-      retval.append(BaysianEstimatorPlayer(0.4,0.7))
-    elif i==3:
-      retval.append(Gaussian(0.2,0.8))
-    elif i==4:
-      retval.append(Gaussian(0.4,0.7))
-  return retval
-def trial(player_array):
+
+def main():
   coyote_cards = defaultCoyoteCards()
   master = GameMaster()
   master.all_cards = coyote_cards
-  master.players = generate_player(player_array)
+  players= []
+  dqn1 = DQNPlayer(loss_output = "DQN1.log")
+  dqn2 = DQNPlayer(loss_output = "DQN2.log")
+  baysian1 = BaysianEstimatorPlayer(0.2,0.8,loss_output = "baysian1.log")
+  baysian2 = BaysianEstimatorPlayer(0.3,0.7,loss_output = "baysian2.log")
+  baysian3 = BaysianEstimatorPlayer(0.4,0.7,loss_output = "baysian3.log")
+  players.append(dqn1)
+  players.append(baysian1)
+  players.append(dqn2)
+  players.append(baysian2)
+  players.append(baysian3)
+
+  master.players = players
   lose_count = np.zeros(5,dtype=np.int64)
   for i in range(1000000):
     loser = master.play()
     lose_count[loser]+=1
     if i%1000 == 0:
+      print(lose_count)
       lose_count[:] = 0
   lose_count[:]=0
-  for i in master.players:
-    if isinstance(i,DQNPlayer):
-      i.evaluation_mode=True
+  dqn1.EPSILON = 1.0
+  
+  baysian1.evaluation_mode = True
+  dqn2.evaluation_mode = True
+  baysian3.evaluation_mode = True
+  for i in range(1000000):
+    loser = master.play()
+    lose_count[loser]+=1
+    if i%1000 == 0:
+      print(lose_count)
+      lose_count[:] = 0
+  dqn1.evaluation_mode = True
+  baysian2.evaluation_mode = True
+ 
   for i in range(10000):
     loser = master.play()
     lose_count[loser]+=1
@@ -64,13 +75,6 @@ def trial(player_array):
   retval[list(player_array)]=lose_count
   print(retval)
   return retval
-def main():
-  p = Pool()
-  result = p.map(trial,list(itertools.permutations([0,1,2,3,4],5)))
-
-  print(result)
-  print('sum')
-  print(np.sum(np.array(result),axis=0))
   
 if __name__=='__main__':
   main()

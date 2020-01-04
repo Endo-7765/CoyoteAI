@@ -30,47 +30,38 @@ def defaultCoyoteCards():
   return cards
 def generate_player(player_array):
   retval = []
+  param1 = np.linspace(0.2,0.7,6)
+  param2 = np.linspace(0.5,0.9,5)
   for i in player_array:
-    if i==0:
-      retval.append(DQNPlayer())
-    elif i==1:
-      retval.append(BaysianEstimatorPlayer(0.2,0.8))
-    elif i==2:
-      retval.append(BaysianEstimatorPlayer(0.4,0.7))
-    elif i==3:
-      retval.append(Gaussian(0.2,0.8))
-    elif i==4:
-      retval.append(Gaussian(0.4,0.7))
+    retval.append(Gaussian(param1[i//len(param2)],param2[i%len(param2)]))
   return retval
-def trial(player_array):
+
+    
+def trial(seed):
+  player_array = np.random.RandomState(seed=seed).permutation(np.arange(30,dtype=np.int64))[:5]
   coyote_cards = defaultCoyoteCards()
   master = GameMaster()
   master.all_cards = coyote_cards
   master.players = generate_player(player_array)
   lose_count = np.zeros(5,dtype=np.int64)
-  for i in range(1000000):
-    loser = master.play()
-    lose_count[loser]+=1
-    if i%1000 == 0:
-      lose_count[:] = 0
-  lose_count[:]=0
   for i in master.players:
     if isinstance(i,DQNPlayer):
       i.evaluation_mode=True
   for i in range(10000):
     loser = master.play()
     lose_count[loser]+=1
-  retval = np.zeros(5,dtype=np.int64)
+  retval = np.zeros(30,dtype=np.float32)
+  retval[:]=np.nan
   retval[list(player_array)]=lose_count
   print(retval)
   return retval
 def main():
   p = Pool()
-  result = p.map(trial,list(itertools.permutations([0,1,2,3,4],5)))
+  result = p.map(trial,np.arange(1000))
 
   print(result)
-  print('sum')
-  print(np.sum(np.array(result),axis=0))
+  print('average')
+  print(np.nanmean(np.array(result),axis=0))
   
 if __name__=='__main__':
   main()

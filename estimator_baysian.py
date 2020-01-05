@@ -40,7 +40,7 @@ class BaysianEstimatorPlayer(Player):
       self.loss_output = None
     self.configuration = configuration
     self.card_estimator = EstimationModelByContinuous()
-    self.card_estimator_optimizer = optim.SGD(self.card_estimator.parameters(),lr=1e-1,momentum = 0.3)
+    self.card_estimator_optimizer = optim.SGD(self.card_estimator.parameters(),lr=1e-1,momentum = 0.3,weight_decay = 1e-3)
     self.card_estimator_memory = []#カード推定器の学習用のリプレイ配列(history,answer)
     self.card_estimator_temp_memory = []#前回の答え合わせ以降の状態を全て保存
     self.done=False

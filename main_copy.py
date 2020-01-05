@@ -34,20 +34,18 @@ def main():
   master = GameMaster()
   master.all_cards = coyote_cards
   players= []
-  dqn1 = DQNPlayer(loss_output = "DQN1_no_reset_EPSILON.log")
-  dqn2 = DQNPlayer(loss_output = "DQN2_no_reset_EPSILON.log")
-  baysian1 = BaysianEstimatorPlayer(0.2,0.8,loss_output = "baysian1_no_reset_EPSILON.log")
-  baysian2 = BaysianEstimatorPlayer(0.3,0.7,loss_output = "baysian2_no_reset_EPSILON.log")
-  baysian3 = BaysianEstimatorPlayer(0.4,0.7,loss_output = "baysian3_no_reset_EPSILON.log")
-  players.append(dqn1)
+  baysian1 = BaysianEstimatorPlayer(0.2,0.8,loss_output = "baysian1_no_DQN.log")
+  baysian2 = BaysianEstimatorPlayer(0.3,0.7,loss_output = "baysian2_no_DQN.log")
+  baysian3 = BaysianEstimatorPlayer(0.4,0.7,loss_output = "baysian3_no_DQN.log")
   players.append(baysian1)
-  players.append(dqn2)
+  players.append(Gaussian(0.3,0.6))
   players.append(baysian2)
+  players.append(Gaussian(0.2,0.8))
   players.append(baysian3)
 
   master.players = players
   lose_count = np.zeros(5,dtype=np.int64)
-  for i in range(1000000):
+  for i in range(100000):
     loser = master.play()
     lose_count[loser]+=1
     if i%1000 == 0:
@@ -55,17 +53,6 @@ def main():
       lose_count[:] = 0
   lose_count[:]=0
   
-  baysian1.evaluation_mode = True
-  dqn2.evaluation_mode = True
-  baysian3.evaluation_mode = True
-  for i in range(1000000):
-    loser = master.play()
-    lose_count[loser]+=1
-    if i%1000 == 0:
-      print(lose_count)
-      lose_count[:] = 0
-  dqn1.evaluation_mode = True
-  baysian2.evaluation_mode = True
  
   for i in range(10000):
     loser = master.play()

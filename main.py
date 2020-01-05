@@ -42,17 +42,20 @@ def generate_player(player_array):
     elif i==4:
       retval.append(Gaussian(0.4,0.7))
   return retval
-def trial(player_array):
+def trial(player_array_seed):
   coyote_cards = defaultCoyoteCards()
   master = GameMaster()
   master.all_cards = coyote_cards
+  player_array = np.random.RandomState(seed = player_array_seed).permutation(np.arange(5))
   master.players = generate_player(player_array)
   lose_count = np.zeros(5,dtype=np.int64)
-  for i in range(1000000):
+  for i in range(10000):
     loser = master.play()
     lose_count[loser]+=1
     if i%1000 == 0:
       lose_count[:] = 0
+      print(i)
+
   lose_count[:]=0
   for i in master.players:
     if isinstance(i,DQNPlayer):
@@ -66,7 +69,7 @@ def trial(player_array):
   return retval
 def main():
   p = Pool()
-  result = p.map(trial,list(itertools.permutations([0,1,2,3,4],5)))
+  result = p.map(trial,list(range(64)))
 
   print(result)
   print('sum')

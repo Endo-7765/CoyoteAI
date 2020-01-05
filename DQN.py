@@ -60,7 +60,7 @@ class DQNPlayer(Player):
     self.Q_ast = copy.deepcopy(self.Q)#target network
     self.card_estimator  = EstimationModelByContinuous()
     self.optimizer = optim.SGD(self.Q.parameters(),lr = 1e-1,momentum=0.3)
-    self.card_estimator_optimizer = optim.SGD(self.card_estimator.parameters(),lr=1e-1,momentum=0.3)
+    self.card_estimator_optimizer = optim.SGD(self.card_estimator.parameters(),lr=1e-1,momentum=0.3,weight_decay = 1e-3)
     self.memory=[]#リプレイ用の配列(state,action,reward,next_state,done)
     self.card_estimator_memory = []#カード推定器の学習用のリプレイ配列(history,answer)
     self.EPSILON = self.configuration.EPSILON

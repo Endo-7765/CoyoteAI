@@ -59,6 +59,7 @@ class BaysianEstimatorPlayer(Player):
       self.my_card = None
     if len(self.card_estimator_memory)>=self.configuration.MEMORY_SIZE and self.count%self.configuration.TRAIN_FREQ == 0:
       self.card_estimator_train()
+      self.card_estimator_memory = []
     self.done=False
     self.card_estimator_temp_memory.append(state_vector)
     self.count += 1
@@ -126,6 +127,7 @@ class BaysianEstimatorPlayer(Player):
     average_loss /= (len(memory_)/self.configuration.BATCH_SIZE)
     if self.loss_output is not None:
       self.loss_output.write(str(self.count)+','+str(average_loss)+'\n')
+      self.loss_output.flush()
   def learn(self,result,my_card,history):
     if self.my_card == None:
       self.my_card = my_card

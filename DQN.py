@@ -59,7 +59,7 @@ class DQNPlayer(Player):
     self.Q = Net()#Q_value estimate network
     self.Q_ast = copy.deepcopy(self.Q)#target network
     self.card_estimator  = EstimationModelByContinuous()
-    self.optimizer = optim.SGD(self.Q.parameters(),lr = 1e-1,momentum=0.3)
+    self.optimizer = optim.SGD(self.Q.parameters(),lr = 1e-2,momentum=0.3)
     self.card_estimator_optimizer = optim.SGD(self.card_estimator.parameters(),lr=1e-1,momentum=0.3,weight_decay = 1e-3)
     self.memory=[]#リプレイ用の配列(state,action,reward,next_state,done)
     self.card_estimator_memory = []#カード推定器の学習用のリプレイ配列(history,answer)
@@ -190,6 +190,7 @@ class DQNPlayer(Player):
       self.Q_ast = copy.deepcopy(self.Q)
   def card_estimator_train(self):
     average_loss = 0.0
+ 
     memory_ = np.random.permutation(self.card_estimator_memory)
     memory_idx = range(len(memory_))
     self.card_estimator_temp_count += 1
@@ -208,7 +209,8 @@ class DQNPlayer(Player):
     average_loss /= (len(memory_)/self.configuration.BATCH_SIZE)
     if self.loss_output is not None:
       self.loss_output.write(str(self.count)+","+str(average_loss)+'\n')
-   
+      self.loss_output.flush()
+ 
   def __del__(self):
     if self.loss_output is None:
       self.loss_output.close()

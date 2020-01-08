@@ -54,7 +54,15 @@ def main():
       print(lose_count)
       lose_count[:] = 0
   lose_count[:]=0
-  
+  torch.save(dqn1.Q.state_dict(),"DQN1.npz")
+  torch.save(dqn1.card_estimator.state_dict(),"DQN1_estimator.npz")
+  torch.save(dqn2.Q.state_dict(),"DQN2.npz")
+  torch.save(dqn2.card_estimator.state_dict(),"DQN2_estimator.npz")
+  torch.save(baysian1.card_estimator.state_dict(),"baysian1.npz")
+  torch.save(baysian2.card_estimator.state_dict(),"baysian2.npz")
+  torch.save(baysian3.card_estimator.state_dict(),"baysian3.npz")
+
+  dqn1.EPSILON = 1.0
   baysian1.evaluation_mode = True
   dqn2.evaluation_mode = True
   baysian3.evaluation_mode = True
